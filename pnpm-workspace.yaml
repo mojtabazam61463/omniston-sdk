@@ -1,3 +1,19 @@
+minimumReleaseAge: 2880
+minimumReleaseAgeExclude:
+  - "@ston-fi/*"
+
+onlyBuiltDependencies:
+  - "lefthook"
+
 packages:
-  - 'packages/*'
-  - 'examples/*'
+  - "examples/*"
+  - "packages/*"
+
+verifyDepsBeforeRun: "install"
+
+catalog:
+  "@arethetypeswrong/cli": 0.18.2
+  "publint": 0.3.18
+  "vitest": 4.0.18
+  "rxjs": 7.8.2
+  "tsdown": 0.21.7

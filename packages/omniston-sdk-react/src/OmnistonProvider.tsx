@@ -1,64 +1,46 @@
-"use client";
-
-import { type IOmnistonDependencies, Omniston } from "@ston-fi/omniston-sdk";
+import type { Omniston } from "@ston-fi/omniston-sdk";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as React from "react";
+import { createContext, type PropsWithChildren, useRef } from "react";
 
-import { ObservableRefCountCache } from "./ObservableRefCountCache";
-import { ObservableRefCountCacheContext } from "./ObservableRefCountCacheContext";
+export const OmnistonContext = createContext<Omniston | null>(null);
 
-export const OmnistonContext = React.createContext<Omniston | null>(null);
-
-interface OmnistonProviderProps extends IOmnistonDependencies {
+export interface OmnistonProviderProps {
   /**
-   * Provide a queryClient instance to use in Omniston hooks.
+   * Omniston instance
+   *
+   * Will be exposed via `useOmniston()` hook
+   */
+  omniston: Omniston;
+  /**
+   * Optional app-level TanStack Query client
+   *
+   * When set, OmnistonProvider will not create its own QueryClient and will use the provided one instead
    */
   queryClient?: QueryClient;
-  children: React.ReactNode;
 }
 
-/**
- * Place it at the root of your app to use {@link useOmniston()}
- */
-export const OmnistonProvider: React.FC<OmnistonProviderProps> =
-  function OmnistonProvider({
-    children,
-    queryClient: queryClientProp,
-    ...omnistonProps
-  }) {
-    const [omniston, setOmniston] = React.useState(
-      () => new Omniston(omnistonProps),
-    );
+export const OmnistonProvider = ({
+  children,
+  omniston,
+  queryClient,
+}: PropsWithChildren<OmnistonProviderProps>) => {
+  const internalQueryClientRef = useRef<QueryClient | null>(null);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies:
-    const queryClient = React.useMemo(
-      () => queryClientProp ?? new QueryClient(),
-      [!!queryClientProp],
-    );
+  const getInternalQueryClient = () => {
+    if (!internalQueryClientRef.current) {
+      internalQueryClientRef.current = new QueryClient();
+    }
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies:
-    React.useEffect(() => {
-      setOmniston(new Omniston(omnistonProps));
-    }, [JSON.stringify(omnistonProps)]);
-
-    React.useEffect(() => () => omniston.close(), [omniston]);
-
-    const observableRefCountCacheRef = React.useRef(
-      new ObservableRefCountCache(),
-    );
-
-    return (
-      <OmnistonContext.Provider value={omniston}>
-        {
-          // TODO: if queryClient is passed it means that the provider already exists in the upper tree adn we don't need to create a new one
-        }
-        <QueryClientProvider client={queryClient}>
-          <ObservableRefCountCacheContext.Provider
-            value={observableRefCountCacheRef.current}
-          >
-            {children}
-          </ObservableRefCountCacheContext.Provider>
-        </QueryClientProvider>
-      </OmnistonContext.Provider>
-    );
+    return internalQueryClientRef.current;
   };
+
+  if (queryClient) {
+    return <OmnistonContext.Provider value={omniston}>{children}</OmnistonContext.Provider>;
+  }
+
+  return (
+    <OmnistonContext.Provider value={omniston}>
+      <QueryClientProvider client={getInternalQueryClient()}>{children}</QueryClientProvider>
+    </OmnistonContext.Provider>
+  );
+};
